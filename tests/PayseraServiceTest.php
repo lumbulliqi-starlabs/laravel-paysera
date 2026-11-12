@@ -87,8 +87,11 @@ class PayseraServiceTest extends TestCase
         $this->assertEquals(0, PaymentStatus::REGISTERED->value);
         $this->assertEquals(1, PaymentStatus::COMPLETED->value);
         $this->assertEquals(2, PaymentStatus::AUTHORIZED->value);
-        $this->assertEquals(3, PaymentStatus::CANCELLED->value);
-        $this->assertEquals(4, PaymentStatus::REFUSED->value);
+        $this->assertEquals(3, PaymentStatus::PAYER_INFO->value);
+        $this->assertEquals(4, PaymentStatus::EXECUTED_UNCONFIRMED->value);
+        // Application-side states, outside Paysera's 0..4 callback range.
+        $this->assertEquals(100, PaymentStatus::CANCELLED->value);
+        $this->assertEquals(101, PaymentStatus::REFUSED->value);
     }
 
     #[Test]

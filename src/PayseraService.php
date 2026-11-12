@@ -87,22 +87,24 @@ class PayseraService
 
         $transaction = $this->createTransaction($orderId, $amount, $description, $email, $extraData);
 
-        $requestData = $this->buildRequestData([
+        $requestData = $this->buildRequestData(array_filter([
             'orderid' => $orderId,
             'amount' => $amount,
-            'description' => $description,
-        ]);
-
-        $requestData['accepturl'] = $extraData['accept_url'] ?? config('paysera.urls.accept_url');
-        $requestData['cancelurl'] = $extraData['cancel_url'] ?? config('paysera.urls.cancel_url');
-        $requestData['callbackurl'] = $extraData['callback_url'] ?? config('paysera.urls.callback_url');
+            'paytext' => $description !== '' ? $description : null,
+            'p_email' => $email,
+            'country' => $extraData['country'] ?? null,
+            'lang' => $extraData['language'] ?? null,
+            'accepturl' => $extraData['accept_url'] ?? null,
+            'cancelurl' => $extraData['cancel_url'] ?? null,
+            'callbackurl' => $extraData['callback_url'] ?? null,
+        ], fn ($value) => $value !== null && $value !== ''));
 
         $factory = new \WebToPay_Factory([
             \WebToPay_Config::PARAM_PROJECT_ID => $this->projectId,
             \WebToPay_Config::PARAM_PASSWORD => $this->password,
         ]);
 
-        $url = $factory->getRequestBuilder()->buildRequestUrlFromData($requestData);
+        $url = $factory->getUrlBuilder()->buildForRequest($requestData);
 
         return [
             'payment_url' => $url,
@@ -111,6 +113,13 @@ class PayseraService
         ];
     }
 
+    /**
+     * Builds and signs the request Paysera expects. accepturl, cancelurl and callbackurl are
+     * required by Paysera; when the caller does not pass them, the configured URLs are used.
+     * Amounts are given in major units and converted to the integer cents Paysera wants.
+     *
+     * @return array<string, mixed> the signed request (data + sign), ready for the URL builder
+     */
     public function buildRequestData(array $data): array
     {
         $this->ensureCredentials();
@@ -119,12 +128,15 @@ class PayseraService
         $requestData['projectid'] = $this->projectId;
         $requestData['sign_password'] = $this->password;
         $requestData['currency'] = $requestData['currency'] ?? $this->currency;
+        $requestData['accepturl'] = $data['accepturl'] ?? config('paysera.urls.accept_url');
+        $requestData['cancelurl'] = $data['cancelurl'] ?? config('paysera.urls.cancel_url');
+        $requestData['callbackurl'] = $data['callbackurl'] ?? config('paysera.urls.callback_url');
 
         if (isset($requestData['amount'])) {
             $requestData['amount'] = (int) round($requestData['amount'] * 100);
         }
 
-        unset($requestData['accepturl'], $requestData['cancelurl'], $requestData['callbackurl']);
+        $requestData = array_filter($requestData, fn ($value) => $value !== null && $value !== '');
 
         try {
             return WebToPay::buildRequest($requestData);
@@ -135,12 +147,7 @@ class PayseraService
 
     public function redirectToPayment(array $data): void
     {
-        $requestData = $this->buildRequestData($data);
-        $requestData['accepturl'] = $data['accepturl'] ?? config('paysera.urls.accept_url');
-        $requestData['cancelurl'] = $data['cancelurl'] ?? config('paysera.urls.cancel_url');
-        $requestData['callbackurl'] = $data['callbackurl'] ?? config('paysera.urls.callback_url');
-
-        WebToPay::redirectToPayment($requestData);
+        WebToPay::redirectToPayment($this->buildRequestData($data));
     }
 
     public function createTransaction(
@@ -220,10 +227,10 @@ class PayseraService
 
     protected function updateTransactionStatus(PayseraTransaction $transaction, PaymentStatus $status): void
     {
+        // Paysera never reports a cancellation or refusal through the callback; only the
+        // application marks a transaction cancelled or refused.
         match ($status) {
-            PaymentStatus::COMPLETED => $transaction->markAsCompleted(),
-            PaymentStatus::CANCELLED => $transaction->markAsCancelled(),
-            PaymentStatus::REFUSED => $transaction->markAsRefused(),
+            PaymentStatus::COMPLETED, PaymentStatus::EXECUTED_UNCONFIRMED => $transaction->markAsCompleted(),
             PaymentStatus::AUTHORIZED => $transaction->markAsAuthorized(),
             default => null,
         };

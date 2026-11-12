@@ -14,6 +14,9 @@ class PaymentResult
         public readonly ?string $orderId,
         public readonly ?float $amount,
         public readonly ?string $currency,
+        /** What was actually paid after any currency conversion (payamount / paycurrency), when Paysera sends it. */
+        public readonly ?float $payAmount,
+        public readonly ?string $payCurrency,
         public readonly ?string $payerEmail,
         public readonly ?string $paymentMethod,
         public readonly array $rawData,
@@ -39,6 +42,12 @@ class PaymentResult
         return $this->status === PaymentStatus::AUTHORIZED;
     }
 
+    /** Still waiting for Paysera: statuses 0, 2 and 3. */
+    public function isPending(): bool
+    {
+        return $this->status->isPending();
+    }
+
     public function isRegistered(): bool
     {
         return $this->status === PaymentStatus::REGISTERED;
@@ -52,6 +61,8 @@ class PaymentResult
             orderId: $data['orderid'] ?? null,
             amount: isset($data['amount']) ? (float) $data['amount'] / 100 : null,
             currency: $data['currency'] ?? null,
+            payAmount: isset($data['payamount']) ? (float) $data['payamount'] / 100 : null,
+            payCurrency: $data['paycurrency'] ?? null,
             payerEmail: $data['p_email'] ?? null,
             paymentMethod: $data['payment_method'] ?? null,
             rawData: $data,

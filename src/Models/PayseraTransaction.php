@@ -62,7 +62,7 @@ class PayseraTransaction extends Model
 
     public function scopePending($query)
     {
-        return $query->whereIn('status', [PaymentStatus::REGISTERED, PaymentStatus::AUTHORIZED]);
+        return $query->whereIn('status', [PaymentStatus::REGISTERED, PaymentStatus::AUTHORIZED, PaymentStatus::PAYER_INFO]);
     }
 
     public function scopeFailed($query)

@@ -48,6 +48,23 @@ Set `PAYSERA_API_MODE=true` in `.env` to enable API mode. This returns JSON resp
 PAYSERA_API_MODE=true
 ```
 
+## Callback statuses
+
+Paysera's classic Checkout reports these `status` values in the callback (see
+[Processing callback](https://developers.paysera.com/guides/checkout-classic/getting-started/making-your-first-payment/processing-callback)):
+
+| status | Enum | Meaning |
+|---|---|---|
+| 0 | `REGISTERED` | payment not executed |
+| 1 | `COMPLETED` | payment successful |
+| 2 | `AUTHORIZED` | order accepted, payment not executed yet |
+| 3 | `PAYER_INFO` | additional information about the payer; not a result |
+| 4 | `EXECUTED_UNCONFIRMED` | payment executed, no confirmation of received funds will follow |
+
+`isSuccessful()` is true for 1 and 4, `isPending()` for 0, 2 and 3. Paysera sends no callback when
+a customer cancels; they return on `cancelurl`. `CANCELLED` (100) and `REFUSED` (101) exist for the
+application to set and are never produced by a callback.
+
 ## Usage
 
 ### Vue / SPA (API Mode)

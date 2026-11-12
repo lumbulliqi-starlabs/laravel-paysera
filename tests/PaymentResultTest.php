@@ -38,16 +38,19 @@ class PaymentResultTest extends TestCase
     public function it_has_status_check_methods(): void
     {
         $completed = PaymentResult::fromCallbackData(['status' => '1']);
-        $cancelled = PaymentResult::fromCallbackData(['status' => '3']);
-        $refused = PaymentResult::fromCallbackData(['status' => '4']);
+        $payerInfo = PaymentResult::fromCallbackData(['status' => '3']);
+        $executed = PaymentResult::fromCallbackData(['status' => '4']);
         $authorized = PaymentResult::fromCallbackData(['status' => '2']);
         $registered = PaymentResult::fromCallbackData(['status' => '0']);
 
         $this->assertTrue($completed->isCompleted());
         $this->assertFalse($completed->isCancelled());
 
-        $this->assertTrue($cancelled->isCancelled());
-        $this->assertTrue($refused->isRefused());
+        // 3 and 4 are not failures: Paysera never reports a cancellation through the callback.
+        $this->assertTrue($payerInfo->isPending());
+        $this->assertFalse($payerInfo->isCancelled());
+        $this->assertTrue($executed->isCompleted());
+        $this->assertFalse($executed->isRefused());
         $this->assertTrue($authorized->isAuthorized());
         $this->assertTrue($registered->isRegistered());
     }

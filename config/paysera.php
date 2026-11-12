@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 return [
 
-    'project_id' => env('PAYSERA_PROJECT_ID'),
+    // An empty PAYSERA_PROJECT_ID must become null: the service types it as ?int.
+    'project_id' => filter_var(env('PAYSERA_PROJECT_ID'), FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE),
 
-    'sign_password' => env('PAYSERA_SIGN_PASSWORD'),
+    'sign_password' => env('PAYSERA_SIGN_PASSWORD') ?: null,
 
     'currency' => env('PAYSERA_CURRENCY', 'EUR'),
 
